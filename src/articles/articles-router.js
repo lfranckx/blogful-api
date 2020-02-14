@@ -12,6 +12,7 @@ const serializeArticle = article => ({
     title: xss(article.title),
     content: xss(article.content),
     date_published: article.date_published,
+    author: article.author,
 })
 
 articlesRouter
@@ -25,15 +26,15 @@ articlesRouter
         .catch(next)
     })
     .post(jsonParser, (req, res, next) => {
-        const { title, content, style } = req.body
-        const newArticle = { title, content, style }
+        const { title, content, style, author } = req.body
+        const newArticle = { title, content, style, author }
 
         for (const [key, value] of Object.entries(newArticle))
-        if (value == null)
-            return res.status(400).json({
-                error: { message: `Missing '${key}' in request body` }
-            })
-
+            if (value == null)
+                return res.status(400).json({
+                    error: { message: `Missing '${key}' in request body` }
+                })
+        newArticle.author = author
         ArticlesService.insertArticle(
             req.app.get('db'),
             newArticle
@@ -82,12 +83,21 @@ articlesRouter
     .patch(jsonParser, (req, res, next) => {
         const { title, content, style } = req.body
         const articleToUpdate = { title, content, style }
+
+        const numberOfValues = Object.values(articleToUpdate).filter(Boolean).length
+        if (numberOfValues === 0) 
+            return res.status(400).json({
+                error: {
+                    message: `Request body must contain either 'title', 'style', or 'content'`
+                }
+            })
+
         ArticlesService.updateArticle(
             req.app.get('db'),
             req.params.article_id,
             articleToUpdate
         )
-            .then(numRowsAffected =>  {
+            .then(numRowsAffected => {
                 res.status(204).end()
             })
             .catch(next)
